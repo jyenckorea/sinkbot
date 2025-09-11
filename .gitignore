@@ -1,0 +1,17 @@
+# Virtual Environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Database file
+*.db
+*.sqlite3
+
+# AI Model file
+*.pkl
+
+# IDE settings
+.vscode/
