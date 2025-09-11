@@ -1,4 +1,4 @@
-# dashboard.py (v1.3 - Z Value Precision Fix)
+# dashboard.py (v1.0 - Z Value Precision Fix)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -16,7 +16,7 @@ IS_CLOUD_ENV = 'DB_HOST' in os.environ
 
 st.set_page_config(layout="wide")
 # 대시보드 제목에 현재 실행 환경 표시
-st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) v1.3")
+st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) v1.0")
 
 if IS_CLOUD_ENV:
     # Cloudtype 환경 (PostgreSQL)
