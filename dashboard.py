@@ -1,4 +1,4 @@
-# dashboard.py (v1.0 - Z Value Precision Fix)
+# dashboard.py (AI 모델을 DB에서 불러오도록 수정)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,25 +9,20 @@ from streamlit_folium import st_folium
 import joblib
 import os
 import psycopg2
-import sqlite3
+import io
 
-# --- ⭐️ 1. 실행 환경 감지 및 DB/모델 경로 설정 ⭐️ ---
+# --- 1. 실행 환경 감지 및 DB 연결 정보 설정 ---
 IS_CLOUD_ENV = 'DB_HOST' in os.environ
 
 st.set_page_config(layout="wide")
-# 대시보드 제목에 현재 실행 환경 표시
-st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) v1.0")
+st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) vFinal")
 
 if IS_CLOUD_ENV:
-    # Cloudtype 환경 (PostgreSQL)
     dsn = f"host={os.environ.get('DB_HOST')} port={os.environ.get('DB_PORT')} dbname={os.environ.get('DB_NAME')} user={os.environ.get('DB_USER')} password={os.environ.get('DB_PASSWORD')}"
-    MODEL_DIR = "/data"
 else:
-    # 로컬 개발 환경 (SQLite)
-    DB_FILE = "sinkbot_data.db"
-    MODEL_DIR = "." # 현재 폴더
-
-model_file = os.path.join(MODEL_DIR, "sinkbot_model.pkl")
+    # 로컬 환경에서는 DB 관련 기능을 사용하지 않으므로, 이 스크립트는 클라우드 전용으로 간소화합니다.
+    st.error("이 대시보드는 Cloudtype 환경에서만 작동합니다. 환경 변수가 설정되지 않았습니다.")
+    st.stop() # 로컬에서는 더 이상 진행하지 않음
 
 # --- Session State 초기화 ---
 if 'init' not in st.session_state:
@@ -62,25 +57,37 @@ with st.sidebar:
         st.cache_resource.clear()
         st.toast("새로운 AI 모델을 불러왔습니다!", icon="🤖")
 
-# --- 함수 정의 ---
+# --- ⭐️ 2. 함수 정의 (모델을 파일이 아닌 DB에서 로드) ⭐️ ---
 @st.cache_resource
-def load_model(model_path):
-    if not os.path.exists(model_path): return None
-    try: return joblib.load(model_path)
-    except Exception as e: st.error(f"모델 로딩 중 오류 발생: {e}"); return None
-
-@st.cache_data(ttl=st.session_state.refresh_interval)
-def load_data():
-    """환경에 따라 적절한 DB에서 데이터를 불러옵니다."""
+def load_model_from_db():
+    """DB에서 최신 AI 모델을 불러옵니다."""
     try:
-        if IS_CLOUD_ENV:
-            conn = psycopg2.connect(dsn)
-        else:
-            if not os.path.exists(DB_FILE):
-                st.warning(f"로컬 DB 파일 '{DB_FILE}'을 찾을 수 없습니다. collector.py를 먼저 실행해주세요.")
-                return pd.DataFrame()
-            conn = sqlite3.connect(DB_FILE)
+        conn = psycopg2.connect(dsn)
+        with conn.cursor() as cur:
+            # 가장 최근에 생성된 모델 하나만 가져옵니다.
+            cur.execute("SELECT model_data FROM ai_models WHERE model_name = 'sinkbot_model' ORDER BY created_at DESC LIMIT 1")
+            result = cur.fetchone()
+        conn.close()
         
+        if result:
+            model_bytes = result[0]
+            # 바이트 데이터를 다시 AI 모델 객체로 변환합니다.
+            buffer = io.BytesIO(model_bytes)
+            model = joblib.load(buffer)
+            st.toast("AI 모델을 DB에서 성공적으로 불러왔습니다.", icon="🤖")
+            return model
+        else:
+            # DB에 모델이 아직 없는 경우
+            return None
+    except Exception as e:
+        st.error(f"DB에서 모델 로딩 중 오류 발생: {e}")
+        return None
+
+@st.cache_data(ttl=st.session_state.get('refresh_interval', 10))
+def load_data():
+    """DB에서 측정 데이터를 불러옵니다."""
+    try:
+        conn = psycopg2.connect(dsn)
         df = pd.read_sql_query("SELECT * FROM displacement ORDER BY timestamp", conn)
         conn.close()
         return df
@@ -89,6 +96,7 @@ def load_data():
         return pd.DataFrame()
 
 def process_data(df):
+    """데이터를 분석 가능한 형태로 가공합니다."""
     if df.empty or len(df) < 1: return None, None
     df_copy = df.copy()
     df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
@@ -101,20 +109,25 @@ def process_data(df):
         df_copy['delta_tilt'] = df_copy['tilt_magnitude'] - df_copy.iloc[0]['tilt_magnitude']
     return df_copy, reference_point
 
-model = load_model(model_file)
+# --- 메인 실행 로직 ---
+model = load_model_from_db()
 df = load_data()
 
 # --- 메인 대시보드 UI ---
 try:
     st.header("🚨 시스템 상태")
-    if model is None: st.warning(f"AI 모델 파일('{model_file}')을 찾을 수 없습니다. trainer.py를 먼저 실행해주세요.", icon="⚠️")
-    elif df.empty or len(df) < 2: st.info("데이터가 충분히 쌓이면 AI 예측을 시작합니다.")
+    if model is None: 
+        st.warning(f"AI 모델을 DB에서 찾을 수 없습니다. Cloudtype 터미널에서 trainer.py를 먼저 실행해주세요.", icon="⚠️")
+    elif df.empty or len(df) < 2:
+        st.info("데이터가 충분히 쌓이면 AI 예측을 시작합니다.")
     else:
         df_for_pred, _ = process_data(df)
         latest_features_df = df_for_pred.tail(1)[['delta_z', 'distance_3d', 'delta_tilt']]
         prediction = model.predict(latest_features_df)
-        if prediction[0] == -1: st.error("🚨 위험: AI가 이상 신호를 감지했습니다!", icon="🚨")
-        else: st.success("✔️ 정상: 시스템이 안정적으로 운영 중입니다.", icon="✔️")
+        if prediction[0] == -1:
+            st.error("🚨 위험: AI가 이상 신호를 감지했습니다!", icon="🚨")
+        else:
+            st.success("✔️ 정상: 시스템이 안정적으로 운영 중입니다.", icon="✔️")
     st.markdown("---")
     
     st.header("📈 실시간 변위 분석")
@@ -128,9 +141,10 @@ try:
             m = folium.Map(location=[lat, lon], zoom_start=16)
             folium.Marker([lat, lon], popup=f"<b>SinkBot</b><br>위도: {lat:.5f}<br>경도: {lon:.5f}", tooltip="현재 측정 위치", icon=folium.Icon(color='red', icon='arrows-v', prefix='fa')).add_to(m)
             st_folium(m, height=280, use_container_width=True, key="folium_map_final")
+            
             st.subheader("📊 데이터 요약")
-            # --- ⭐️ 이 부분이 수정되었습니다: Z값 소수점을 네 자리까지 표시 ⭐️ ---
             st.info(f"기준점: Y={reference_point['y']:.5f}, X={reference_point['x']:.5f}, Z={reference_point['z']:.4f}, TiltX={reference_point['tilt_x']:.3f}°, TiltY={reference_point['tilt_y']:.3f}°")
+            
             summary_col1, summary_col2 = st.columns(2)
             with summary_col1:
                 if 'delta_z' in df_processed.columns and len(df_processed) > 1:
@@ -138,6 +152,7 @@ try:
             with summary_col2:
                  if 'delta_tilt' in df_processed.columns and len(df_processed) > 1:
                     st.metric("현재 기울기 변화량", f"{df_processed.iloc[-1]['delta_tilt']:.3f}°", f"{df_processed.iloc[-1]['delta_tilt'] - df_processed.iloc[-2]['delta_tilt']:.3f}°")
+
         with col2:
             st.subheader("📉 시간에 따른 변화")
             if 'delta_z' in df_processed.columns and len(df_processed) > 1:
@@ -147,7 +162,6 @@ try:
                 }
                 
                 st.selectbox("표시할 그래프 선택:", list(CHART_OPTIONS.keys()), key="chart_type")
-                
                 selected_column = CHART_OPTIONS[st.session_state.chart_type]
                 
                 graph_col1, graph_col2 = st.columns(2)

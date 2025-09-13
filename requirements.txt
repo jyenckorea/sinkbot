@@ -1,10 +1,10 @@
+flask
 streamlit
 pandas
+plotly
 numpy
 scikit-learn
-plotly
+joblib
+psycopg2-binary
 folium
 streamlit-folium
-joblib
-Flask
-psycopg2-binary
