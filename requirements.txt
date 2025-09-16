@@ -3,6 +3,7 @@
 # 데이터 수집 (collector.py)
 flask
 psycopg2-binary
+gunicorn  # <--- 이 줄을 추가해주세요!
 
 # 모델 학습 (trainer.py)
 pandas
