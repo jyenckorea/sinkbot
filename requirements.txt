@@ -1,10 +1,19 @@
+# requirements.txt
+
+# 데이터 수집 (collector.py)
 flask
-streamlit
+psycopg2-binary
+
+# 모델 학습 (trainer.py)
 pandas
-plotly
-numpy
 scikit-learn
 joblib
-psycopg2-binary
+
+# 대시보드 (dashboard.py)
+streamlit
+plotly
 folium
 streamlit-folium
+
+# Numpy는 다른 라이브러리들이 의존하므로 명시
+numpy
