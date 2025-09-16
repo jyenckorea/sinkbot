@@ -1,5 +1,4 @@
-```python:데이터 수집 서버 (Gunicorn 적용):collector.py
-# collector.py (Gunicorn WSGI 서버와 함께 사용하도록 준비)
+# collector.py 
 import os
 import psycopg2
 from flask import Flask, request, jsonify
@@ -33,6 +32,15 @@ def create_tables():
     conn.commit()
     conn.close()
 
+# Flask 앱을 시작하기 전에 테이블 생성 함수를 맨 처음 한번만 실행합니다.
+print("🤖 SinkBot Data Collector를 시작합니다.")
+try:
+    print("데이터베이스 테이블 생성을 시도합니다...")
+    create_tables()
+    print("✅ 데이터베이스 테이블이 준비되었습니다.")
+except Exception as e:
+    print(f"❌ 테이블 생성 중 오류 발생: {e}")
+
 app = Flask(__name__)
 
 @app.route('/data', methods=['POST'])
@@ -52,6 +60,7 @@ def receive_data():
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         conn.close()
+
 
 @app.route('/health', methods=['GET'])
 def health_check():
