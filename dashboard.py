@@ -85,12 +85,15 @@ def load_model_from_db():
 
 @st.cache_data(ttl=st.session_state.get('refresh_interval', 10))
 def load_data():
-    """DB에서 측정 데이터를 불러옵니다."""
+    """DB에서 '최근 5000개'의 측정 데이터만 불러옵니다.""" # 수정
     try:
         conn = psycopg2.connect(dsn)
-        df = pd.read_sql_query("SELECT * FROM displacement ORDER BY timestamp", conn)
+        # SQL 쿼리에 LIMIT을 추가하여 불러오는 데이터 양을 제한
+        query = "SELECT * FROM displacement ORDER BY timestamp DESC LIMIT 5000"
+        df_limited = pd.read_sql_query(query, conn)
         conn.close()
-        return df
+        # 원래 순서대로 다시 정렬
+        return df_limited.sort_values(by='timestamp').reset_index(drop=True)
     except Exception as e:
         st.error(f"DB 데이터 로딩 실패: {e}")
         return pd.DataFrame()
