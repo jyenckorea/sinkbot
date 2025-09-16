@@ -12,3 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 5. Procfile이 실행 명령어를 관리하므로, 여기서는 별도의 CMD가 필요 없습니다.
+
+# ⭐️ 이 서비스들이 어떤 포트를 사용하는지 외부에 알립니다.
+EXPOSE 5000
+EXPOSE 8501
