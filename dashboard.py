@@ -95,15 +95,14 @@ def load_data():
         return pd.DataFrame()
 
 def process_data(df):
-    """데이터를 분석 가능한 형태로 가공하고, 시간대를 한국 시간으로 변환합니다."""
+    """데이터를 분석 가능한 형태로 가공합니다."""
     if df.empty or len(df) < 1: return None, None
     df_copy = df.copy()
-
-    # 이 부분이 원래 코드로 돌아가야 합니다.
-    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
-
-    df_copy = df_copy.sort_values(by='timestamp').reset_index(drop=True)
     
+    # 이 부분이 .dt.tz_convert 없이 원래대로 되어 있는지 확인합니다.
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
+    
+    df_copy = df_copy.sort_values(by='timestamp').reset_index(drop=True)
     reference_point = df_copy.iloc[0]
     if len(df_copy) > 0:
         df_copy['delta_z'] = df_copy['z'] - reference_point['z']
@@ -124,15 +123,6 @@ except Exception as e:
 
 df = load_data()
 
-# [⭐️ 수정/추가 제안] 데이터프레임 전체의 시간대를 한국 시간으로 변환
-if not df.empty and 'timestamp' in df.columns:
-    try:
-        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('Asia/Seoul')
-    except Exception as e:
-        st.warning(f"시간대 변환 중 오류 발생: {e}")
-
-
-df = load_data()
 
 # --- 메인 대시보드 UI ---
 try:
@@ -233,6 +223,7 @@ try:
 
     st.markdown("---")
     st.subheader("🗃️ 원본 데이터 로그")
+    st.caption("ℹ️ 모든 시간은 UTC(협정 세계시) 기준이며, 한국 표준시(KST)보다 9시간 느립니다.")
     st.dataframe(df.tail(20).iloc[::-1], height=740)
 
 except Exception as e:
