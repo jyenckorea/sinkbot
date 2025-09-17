@@ -15,7 +15,7 @@ import io
 IS_CLOUD_ENV = 'DB_HOST' in os.environ
 
 st.set_page_config(layout="wide")
-st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) vFinal")
+st.title(f"🛰️ SinkBot AI 관제 대시보드 ({'Cloud' if IS_CLOUD_ENV else 'Local'}) v1.0")
 
 if IS_CLOUD_ENV:
     dsn = f"host={os.environ.get('DB_HOST')} port={os.environ.get('DB_PORT')} dbname={os.environ.get('DB_NAME')} user={os.environ.get('DB_USER')} password={os.environ.get('DB_PASSWORD')}"
@@ -118,7 +118,7 @@ try:
 
 except Exception as e:
     st.error(f"DB에서 모델 로딩 중 오류 발생: {e}")
-    
+
 df = load_data()
 
 # --- 메인 대시보드 UI ---
