@@ -95,10 +95,13 @@ def load_data():
         return pd.DataFrame()
 
 def process_data(df):
-    """데이터를 분석 가능한 형태로 가공합니다."""
+    """데이터를 분석 가능한 형태로 가공하고, 시간대를 한국 시간으로 변환합니다."""
     if df.empty or len(df) < 1: return None, None
     df_copy = df.copy()
-    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
+
+    # timestamp 컬럼을 datetime 객체로 변환하고, 시간대를 한국(Asia/Seoul)으로 설정
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp']).dt.tz_convert('Asia/Seoul')
+
     df_copy = df_copy.sort_values(by='timestamp').reset_index(drop=True)
     reference_point = df_copy.iloc[0]
     if len(df_copy) > 0:
