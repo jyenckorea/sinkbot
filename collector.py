@@ -44,7 +44,7 @@ except Exception as e:
 # app = Flask(__name__)
 app_v2 = Flask(__name__)
 
-@app.route('/data', methods=['POST'])
+@app_v2.route('/data', methods=['POST']) # <--- @app을 @app_v2로 수정!
 def receive_data():
     conn = get_db_connection()
     try:
@@ -63,7 +63,7 @@ def receive_data():
         conn.close()
 
 
-@app.route('/health', methods=['GET'])
+@app_v2.route('/health', methods=['GET']) # <--- @app을 @app_v2로 수정!
 def health_check():
     try:
         conn = get_db_connection()
