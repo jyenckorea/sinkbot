@@ -28,7 +28,7 @@ else:
 if 'init' not in st.session_state:
     st.session_state.init = True
     st.session_state.auto_refresh = True
-    st.session_state.refresh_interval = 10
+    st.session_state.refresh_interval = 30
     st.session_state.time_range = '전체'
     st.session_state.agg_level = '원본 데이터'
     st.session_state.manual_axis = False
