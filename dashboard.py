@@ -99,10 +99,11 @@ def process_data(df):
     if df.empty or len(df) < 1: return None, None
     df_copy = df.copy()
 
-    # timestamp 컬럼을 datetime 객체로 변환하고, 시간대를 한국(Asia/Seoul)으로 설정
-    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp']).dt.tz_convert('Asia/Seoul')
+    # 이 부분이 원래 코드로 돌아가야 합니다.
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
 
     df_copy = df_copy.sort_values(by='timestamp').reset_index(drop=True)
+    
     reference_point = df_copy.iloc[0]
     if len(df_copy) > 0:
         df_copy['delta_z'] = df_copy['z'] - reference_point['z']
@@ -112,15 +113,24 @@ def process_data(df):
     return df_copy, reference_point
 
 # --- 메인 실행 로직 ---
-model = None # model 변수 초기화
+model = None
 try:
     model = load_model_from_db()
     if model is not None and 'model_loaded_toast_shown' not in st.session_state:
         st.toast("AI 모델을 DB에서 성공적으로 불러왔습니다.", icon="🤖")
-        st.session_state.model_loaded_toast_shown = True # 표시되었다고 기록
-
+        st.session_state.model_loaded_toast_shown = True
 except Exception as e:
     st.error(f"DB에서 모델 로딩 중 오류 발생: {e}")
+
+df = load_data()
+
+# [⭐️ 수정/추가 제안] 데이터프레임 전체의 시간대를 한국 시간으로 변환
+if not df.empty and 'timestamp' in df.columns:
+    try:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('Asia/Seoul')
+    except Exception as e:
+        st.warning(f"시간대 변환 중 오류 발생: {e}")
+
 
 df = load_data()
 
