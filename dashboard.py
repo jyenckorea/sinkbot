@@ -61,27 +61,23 @@ with st.sidebar:
 @st.cache_resource
 def load_model_from_db():
     """DB에서 최신 AI 모델을 불러옵니다."""
+    conn = None
     try:
         conn = psycopg2.connect(dsn)
         with conn.cursor() as cur:
-            # 가장 최근에 생성된 모델 하나만 가져옵니다.
             cur.execute("SELECT model_data FROM ai_models WHERE model_name = 'sinkbot_model' ORDER BY created_at DESC LIMIT 1")
             result = cur.fetchone()
-        conn.close()
-        
+
         if result:
             model_bytes = result[0]
-            # 바이트 데이터를 다시 AI 모델 객체로 변환합니다.
             buffer = io.BytesIO(model_bytes)
             model = joblib.load(buffer)
-            st.toast("AI 모델을 DB에서 성공적으로 불러왔습니다.", icon="🤖")
             return model
         else:
-            # DB에 모델이 아직 없는 경우
             return None
-    except Exception as e:
-        st.error(f"DB에서 모델 로딩 중 오류 발생: {e}")
-        return None
+    finally:
+        if conn:
+            conn.close()
 
 @st.cache_data(ttl=st.session_state.get('refresh_interval', 10))
 def load_data():
@@ -113,7 +109,16 @@ def process_data(df):
     return df_copy, reference_point
 
 # --- 메인 실행 로직 ---
-model = load_model_from_db()
+model = None # model 변수 초기화
+try:
+    model = load_model_from_db()
+    if model is not None and 'model_loaded_toast_shown' not in st.session_state:
+        st.toast("AI 모델을 DB에서 성공적으로 불러왔습니다.", icon="🤖")
+        st.session_state.model_loaded_toast_shown = True # 표시되었다고 기록
+
+except Exception as e:
+    st.error(f"DB에서 모델 로딩 중 오류 발생: {e}")
+    
 df = load_data()
 
 # --- 메인 대시보드 UI ---
