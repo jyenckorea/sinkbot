@@ -41,7 +41,8 @@ try:
 except Exception as e:
     print(f"❌ 테이블 생성 중 오류 발생: {e}")
 
-app = Flask(__name__)
+# app = Flask(__name__)
+app_v2 = Flask(__name__)
 
 @app.route('/data', methods=['POST'])
 def receive_data():
